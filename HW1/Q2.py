@@ -60,7 +60,7 @@ def extract_features_from_file(path):
         pitch_vector (5 statistics)
     """
     try:
-        y, sr = librosa.load(path)
+        y, sr = librosa.load(path, sr=None)
     except Exception:
         return None, None
 

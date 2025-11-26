@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 example_file = os.path.join("LibriSpeech", "dev-clean", "84", "121123", "84-121123-0000.flac")
 
 # Load
-y, sr = librosa.load(example_file)
+y, sr = librosa.load(example_file, sr=None)
 duration = len(y) / sr
 amin, amax = y.min(), y.max()
 
