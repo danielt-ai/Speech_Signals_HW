@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 PATH_LIBRISPEECH = "./LibriSpeech"
 
 FILES_PER_SPEAKER = 20
-TRAIN_SPEAKERS = 66
-TEST_SPEAKERS = 14
+TRAIN_SPEAKERS = 64
+TEST_SPEAKERS = 16
 
 SEED = 0
 random.seed(SEED)
