@@ -86,8 +86,8 @@ def extract_speaker_features(base_path, speaker_id):
     """
     Extracts MFCC and Pitch features for exactly 20 random files of one speaker.
     Returns:
-        mean_mfcc_vector (n_mfcc,)
-        mean_pitch_vector (5,)
+        mfcc_array (n_files, n_mfcc) - one row per file
+        pitch_array (n_files, 5) - one row per file
     """
     files = list_speaker_files(base_path, speaker_id)
     if len(files) == 0:
@@ -112,7 +112,7 @@ def extract_speaker_features(base_path, speaker_id):
     mfcc_arr = np.vstack(mfcc_list)
     pitch_arr = np.vstack(pitch_list)
 
-    return mfcc_arr.mean(axis=0), pitch_arr.mean(axis=0)
+    return mfcc_arr, pitch_arr
 
 
 speakers = load_speakers_txt(
@@ -132,29 +132,68 @@ train_speakers = all_speakers[:TRAIN_SPEAKERS]
 test_speakers = all_speakers[TRAIN_SPEAKERS:TRAIN_SPEAKERS + TEST_SPEAKERS]
 
 
-def build_feature_matrix(speaker_list):
+def build_feature_matrix(speaker_list, average_per_speaker=False):
+    """
+    Builds feature matrices from speaker list.
+
+    Args:
+        speaker_list: List of (speaker_id, gender, base_path) tuples
+        average_per_speaker: If True, average features per speaker (1 sample per speaker)
+                            If False, keep all utterances separate (20 samples per speaker)
+    """
     X_mfcc = []
     X_pitch = []
     y = []
 
-    for speaker_id, gender, base_path in tqdm(speaker_list, desc="Extracting speaker features"):
-        mfcc_vec, pitch_vec = extract_speaker_features(base_path, speaker_id)
-        X_mfcc.append(mfcc_vec)
-        X_pitch.append(pitch_vec)
-        y.append(1 if gender == "M" else 0)
+    for speaker_id, gender, base_path in tqdm(speaker_list, desc="Extracting features"):
+        mfcc_arr, pitch_arr = extract_speaker_features(base_path, speaker_id)
+        if mfcc_arr is None:
+            print(f"Warning: Could not extract features for speaker {speaker_id}")
+            continue
 
-    return np.array(X_mfcc), np.array(X_pitch), np.array(y)
+        label = 1 if gender == "M" else 0
+
+        if average_per_speaker:
+            # Average across utterances - one sample per speaker
+            X_mfcc.append(mfcc_arr.mean(axis=0))
+            X_pitch.append(pitch_arr.mean(axis=0))
+            y.append(label)
+        else:
+            # Keep all utterances separate
+            n_samples = mfcc_arr.shape[0]
+            X_mfcc.append(mfcc_arr)
+            X_pitch.append(pitch_arr)
+            y.extend([label] * n_samples)
+
+    if average_per_speaker:
+        X_mfcc = np.array(X_mfcc)
+        X_pitch = np.array(X_pitch)
+    else:
+        X_mfcc = np.vstack(X_mfcc)
+        X_pitch = np.vstack(X_pitch)
+
+    y = np.array(y)
+
+    return X_mfcc, X_pitch, y
 
 
-print("Extracting features for training speakers...")
-X_mfcc_train, X_pitch_train, y_train = build_feature_matrix(train_speakers)
+print("Extracting features for training speakers (averaged)...")
+X_mfcc_train, X_pitch_train, y_train = build_feature_matrix(train_speakers, average_per_speaker=True)
+print(f"Training set: {X_mfcc_train.shape[0]} samples (averaged per speaker) from {TRAIN_SPEAKERS} speakers")
+print(f"  MFCC shape: {X_mfcc_train.shape}")
+print(f"  Pitch shape: {X_pitch_train.shape}")
 
-print("Extracting features for test speakers...")
-X_mfcc_test, X_pitch_test, y_test = build_feature_matrix(test_speakers)
+print("\nExtracting features for test speakers (individual utterances)...")
+X_mfcc_test, X_pitch_test, y_test = build_feature_matrix(test_speakers, average_per_speaker=False)
+print(f"Test set: {X_mfcc_test.shape[0]} utterances from {TEST_SPEAKERS} speakers")
+print(f"  MFCC shape: {X_mfcc_test.shape}")
+print(f"  Pitch shape: {X_pitch_test.shape}")
 
 
 
-print("TRAINING SVM ON MFCC FEATURES")
+print("\n========================================")
+print("      TRAINING SVM ON MFCC FEATURES")
+print("========================================")
 
 scaler_mfcc = StandardScaler()
 X_mfcc_train_s = scaler_mfcc.fit_transform(X_mfcc_train)
@@ -185,7 +224,9 @@ plt.close()
 
 
 
-print("TRAINING SVM ON PITCH FEATURES")
+print("\n========================================")
+print("      TRAINING SVM ON PITCH FEATURES")
+print("========================================")
 
 scaler_pitch = StandardScaler()
 X_pitch_train_s = scaler_pitch.fit_transform(X_pitch_train)
@@ -226,5 +267,5 @@ axes[1].set_title(f'Pitch Features\nAccuracy: {accuracy_score(y_test, y_pred_pit
 
 plt.tight_layout()
 plt.savefig('confusion_matrix_comparison.png', dpi=300, bbox_inches='tight')
+print("Saved comparison plot to: confusion_matrix_comparison.png")
 plt.close()
-
