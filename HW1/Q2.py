@@ -177,13 +177,13 @@ def build_feature_matrix(speaker_list, average_per_speaker=False):
     return X_mfcc, X_pitch, y
 
 
-print("Extracting features for training speakers (averaged)...")
-X_mfcc_train, X_pitch_train, y_train = build_feature_matrix(train_speakers, average_per_speaker=True)
-print(f"Training set: {X_mfcc_train.shape[0]} samples (averaged per speaker) from {TRAIN_SPEAKERS} speakers")
+print("Extracting features for training speakers...")
+X_mfcc_train, X_pitch_train, y_train = build_feature_matrix(train_speakers, average_per_speaker=False)
+print(f"Training set: {X_mfcc_train.shape[0]} utterances from {TRAIN_SPEAKERS} speakers")
 print(f"  MFCC shape: {X_mfcc_train.shape}")
 print(f"  Pitch shape: {X_pitch_train.shape}")
 
-print("\nExtracting features for test speakers (individual utterances)...")
+print("\nExtracting features for test speakers...")
 X_mfcc_test, X_pitch_test, y_test = build_feature_matrix(test_speakers, average_per_speaker=False)
 print(f"Test set: {X_mfcc_test.shape[0]} utterances from {TEST_SPEAKERS} speakers")
 print(f"  MFCC shape: {X_mfcc_test.shape}")
